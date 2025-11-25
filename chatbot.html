@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Voice Interview Bot — Laxman S. Negi</title>
+
+  <style>
+    :root {
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#9ca3ff;
+      --muted:#94a3b8;
+    }
+
+    body {
+      margin:0;
+      font-family:Inter,system-ui,Roboto,Segoe UI;
+      background:linear-gradient(180deg,#071028,#0b1220);
+      color:#e6eef8;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .app {
+      width:980px;
+      max-width:95%;
+      background:rgba(255,255,255,0.02);
+      border-radius:12px;
+      padding:20px;
+      box-shadow:0 8px 30px rgba(2,6,23,0.8);
+    }
+
+    h1 { margin:0 0 10px; font-size:20px; }
+
+    .grid {
+      display:grid;
+      grid-template-columns:320px 1fr;
+      gap:18px;
+    }
+
+    .panel {
+      background:rgba(255,255,255,0.02);
+      padding:14px;
+      border-radius:10px;
+      min-height:220px;
+    }
+
+    .questions button {
+      width:100%;
+      margin:7px 0;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:transparent;
+      color:#e6eef8;
+      cursor:pointer;
+      text-align:left;
+    }
+
+    .controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+
+    .big-btn {
+      padding:10px 14px;
+      border-radius:8px;
+      border:none;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .listen { background:#0ea5a7; color:#021014; }
+    .stop   { background:#ef4444; color:white; }
+    .speak  { background:var(--accent); color:#021014; }
+
+    .transcript {
+      height:130px;
+      overflow:auto;
+      border-radius:8px;
+      padding:10px;
+      background:rgba(0,0,0,0.25);
+      font-size:14px;
+    }
+
+    .chat {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      max-height:520px;
+      overflow:auto;
+      padding:8px;
+    }
+
+    .msg {
+      padding:10px;
+      border-radius:8px;
+      background:rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.02);
+    }
+
+    .bot {
+      background:linear-gradient(90deg,rgba(124,58,237,0.12),rgba(59,130,246,0.06));
+      border-color:rgba(124,58,237,0.12);
+    }
+
+    .small { font-size:13px; color:var(--muted); }
+
+    .customize { margin-top:8px; display:flex; gap:8px; align-items:center; }
+
+    select {
+      padding:5px 8px;
+      border-radius:8px;
+      background:#0d1422;
+      border:1px solid rgba(255,255,255,0.08);
+      color:white;
+      width:190px;        /* reduced width */
+      font-size:13px;
+    }
+
+    input[type="text"] {
+      flex:1;
+      padding:8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:transparent;
+      color:white;
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <h1>Voice Interview Bot — Laxman Singh Negi</h1>
+
+  <div class="grid">
+    <!-- LEFT: Questions & Controls -->
+    <div class="panel">
+      <strong>Prompts & Quick Actions</strong>
+      <div class="questions" id="questions">
+        <button data-key="life">What should we know about your life story in a few sentences?</button>
+        <button data-key="superpower">What's your #1 superpower?</button>
+        <button data-key="grow">Top 3 areas you'd like to grow in?</button>
+        <button data-key="misconception">What misconception do your coworkers have about you?</button>
+        <button data-key="push">How do you push your boundaries and limits?</button>
+        <button data-key="projects">Tell us about a relevant project</button>
+      </div>
+
+      <div class="customize">
+        <label class="small">Voice:</label>
+        <select id="voiceSelect"></select>
+      </div>
+
+      <div class="controls">
+        <button id="startRec" class="big-btn listen">Start Listening ▶</button>
+        <!-- <button id="stopRec" class="big-btn stop">Stop ⏹</button> -->
+        <button id="speakLast" class="big-btn speak">Speak Last Answer 🔊</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="small">Transcript</div>
+        <div class="transcript" id="transcript">Press “Start Listening” and ask a question or click a prompt.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Chat -->
+    <div class="panel">
+      <strong>Chat</strong>
+      <span class="small">— voice & text demo</span>
+
+      <div class="chat" id="chatArea"></div>
+
+      <div style="margin-top:10px;">
+        <div class="small">Add a custom question</div>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <input id="customQ" type="text" placeholder="Type your question here..." />
+          <button id="askCustom" class="big-btn speak">Ask</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/***********************
+ * PERSONALIZED ANSWERS
+ ***********************/
+const answers = {
+  life:`I'm Laxman Singh Negi — a final-year B.Tech CSE student (2025). I’ve built multiple real-world projects like a scalable MERN e-commerce system, a job search platform, a chat app, and won my college SIH competition for best idea. I’ve also worked as an AI Research Associate where I contributed to LLM prompt engineering and dataset improvements. I also run a YouTube channel “Laugh With Engineer”.`,
+  superpower:`My #1 superpower is learning extremely fast and shipping results. I can quickly pick up new technologies and convert ideas into working systems.`,
+  grow:`The top three areas I want to grow in are: (1) Multi-agent AI systems, (2) ML engineering and production deployment, and (3) Distributed backend architecture.`,
+  misconception:`Many people think I’m quiet — but I’m actually very collaborative; I just prefer thinking deeply before speaking.`,
+  push:`I push my boundaries by taking projects outside my comfort zone — shifting from frontend work to full-stack, backend, and AI research. I set stretch goals and keep improving until things work in the real world.`,
+  projects:`A relevant project is my MERN e-commerce system built using React, Redux, Node.js, Express, and MongoDB with modular APIs, authentication, and full responsiveness.`
+};
+
+function fallbackAnswer(q) {
+  const x = q.toLowerCase();
+  if (x.includes('life')) return answers.life;
+  if (x.includes('super')) return answers.superpower;
+  if (x.includes('grow')) return answers.grow;
+  if (x.includes('mis')) return answers.misconception;
+  if (x.includes('push') || x.includes('limit')) return answers.push;
+  if (x.includes('project')) return answers.projects;
+  return `I'm Laxman. I have strong fundamentals in data structures, Java, React, Node, and practical ML experimentation. Happy to elaborate further.`;
+}
+
+/***********************
+ * UI ELEMENTS
+ ***********************/
+const transcriptEl = document.getElementById("transcript");
+const chatArea = document.getElementById("chatArea");
+const voiceSelect = document.getElementById("voiceSelect");
+const customQ = document.getElementById("customQ");
+
+let lastAnswerText = '';
+let recognition = null;
+let isListening = false;
+
+/***********************
+ * VOICE SYNTHESIS 
+ ***********************/
+function populateVoices() {
+  const voices = speechSynthesis.getVoices();
+  voiceSelect.innerHTML = '';
+  voices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = v.name + " " + v.lang;
+    voiceSelect.appendChild(opt);
+  });
+}
+populateVoices();
+speechSynthesis.onvoiceschanged = populateVoices;
+
+function speakText(text) {
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const list = speechSynthesis.getVoices();
+  const idx = Number(voiceSelect.value || 0);
+  if (list[idx]) u.voice = list[idx];
+  u.rate = 1;
+  u.pitch = 1;
+  speechSynthesis.speak(u);
+}
+
+/***********************
+ * CHAT & DISPLAY
+ ***********************/
+function addChatMessage(text, who) {
+  const div = document.createElement("div");
+  div.className = "msg " + (who === 'bot' ? 'bot' : '');
+  div.textContent = (who === 'bot' ? 'Bot: ' : 'You: ') + text;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function answerAndSpeak(q, a) {
+  addChatMessage(q, 'user');
+  addChatMessage(a, 'bot');
+  lastAnswerText = a;
+  setTimeout(() => speakText(a), 150);
+}
+
+/***********************
+ * SPEECH RECOGNITION
+ ***********************/
+function initRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    transcriptEl.textContent = "Your browser doesn't support Speech Recognition.";
+    return;
+  }
+
+  recognition = new SR();
+  recognition.lang = "en-IN";
+  recognition.interimResults = true;
+
+  recognition.onstart = () => {
+    transcriptEl.textContent = "Listening... speak now.";
+  };
+
+  recognition.onresult = (e) => {
+    let final = "";
+    let interim = "";
+
+    for (const r of e.results) {
+      if (r.isFinal) final += r[0].transcript;
+      else interim += r[0].transcript + " ";
+    }
+
+    transcriptEl.textContent = final || interim;
+  };
+
+  recognition.onerror = (e) => {
+    transcriptEl.textContent = "Error: " + e.error;
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    const q = transcriptEl.textContent.trim();
+    if (q && !q.startsWith("Listening")) {
+      answerAndSpeak(q, fallbackAnswer(q));
+    } else {
+      transcriptEl.textContent = "No speech detected. Try again.";
+    }
+  };
+}
+
+initRecognition();
+
+/***********************
+ * BUTTON HANDLERS
+ ***********************/
+document.getElementById("startRec").addEventListener("click", () => {
+  if (!recognition) initRecognition();
+  if (isListening) return;
+
+  try {
+    recognition.start();
+    isListening = true;
+  } catch (e) {}
+});
+
+document.getElementById("stopRec").addEventListener("click", () => {
+  if (recognition && isListening) {
+    recognition.stop();
+    isListening = false;
+    transcriptEl.textContent = "Stopped listening.";
+  }
+});
+
+document.getElementById("speakLast").addEventListener("click", () => {
+  if (!lastAnswerText) return alert("No answer yet!");
+  speakText(lastAnswerText);
+});
+
+/***********************
+ * QUICK BUTTONS + CUSTOM INPUT
+ ***********************/
+document.getElementById("questions").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  const key = e.target.dataset.key;
+  const a = answers[key] || fallbackAnswer(e.target.textContent);
+  answerAndSpeak(e.target.textContent, a);
+});
+
+document.getElementById("askCustom").addEventListener("click", () => {
+  const q = customQ.value.trim();
+  if (!q) return alert("Type something!");
+  answerAndSpeak(q, fallbackAnswer(q));
+  customQ.value = "";
+});
+
+/***********************
+ * INITIAL BOT MESSAGE
+ ***********************/
+addChatMessage(
+  "Hello — I am Laxman Singh Negi's interview assistant. Click a prompt or ask any question.",
+  "bot"
+);
+</script>
+
+</body>
+</html>
